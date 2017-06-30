@@ -26,7 +26,7 @@ bool SarShishe::hasDefectiveForm(Mat &src, Mat &problem)
     Mat dst;
     threshold(src, dst, 50, 255, CV_THRESH_BINARY);
 
-    Vector<Vec3i> circles = CV_toolbox::findAllCircles(dst);
+    std::vector<Vec3i> circles = CV_toolbox::findAllCircles(dst);
 
     if(circles.size() == 2){
         double d = sqrt(pow(circles[0][0] - circles[1][0], 2) + pow(circles[0][1] - circles[1][1], 2));

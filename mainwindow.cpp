@@ -118,6 +118,16 @@ void MainWindow::slotLog(QString _title, QString _desc)
             arg(_desc);
 
     ui->lstLog->addItem(log);
+
+    QFile logFile("app.log");
+    if(logFile.open(QIODevice::Append)) {
+
+        QTextStream logStream(&logFile);
+        logStream << log << "\r\n";
+
+        logFile.close();
+    }
+
 }
 
 void MainWindow::slotStartCamera()

@@ -19,7 +19,7 @@ public:
 
     // Contours
     static void findClosedContours(const Mat &src, Mat &dst, int minArea = -1, int mode = CV_RETR_TREE, bool approximatePoly = false, Scalar external_color = Scalar::all(255), Scalar hole_color = Scalar::all(0), bool show = false);
-    static Vector<Vec3i> findAllCircles(const Mat &src, int minArea = -1, int mode = CV_RETR_TREE);
+    static std::vector<Vec3i> findAllCircles(const Mat &src, int minArea = -1, int mode = CV_RETR_TREE);
 
 private:
 

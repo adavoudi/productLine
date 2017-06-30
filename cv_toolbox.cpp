@@ -18,9 +18,9 @@ CV_toolbox::~CV_toolbox()
 }
 
 
-Vector<Vec3i> CV_toolbox::findAllCircles(const Mat &src, int minArea, int mode)
+std::vector<Vec3i> CV_toolbox::findAllCircles(const Mat &src, int minArea, int mode)
 {
-    Vector<Vec3i> circles;
+    std::vector<Vec3i> circles;
 
 
     std::vector<cv::Point> approx; // The array for storing the approximation curve
