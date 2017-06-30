@@ -12,8 +12,8 @@ MainWindow::MainWindow(QSharedPointer<QSettings> _settings, QWidget *parent) :
 
     camera.initLibrary();
 
-    connect(&hardware, SIGNAL(sigLog(QString,QString)), this, SLOT(slotLog(QString,QString)));
-    connect(&hardware, SIGNAL(sigAlert()), this, SLOT(slotAlert()));
+    connect(&receiverHardware, SIGNAL(sigLog(QString,QString)), this, SLOT(slotLog(QString,QString)));
+    connect(&receiverHardware, SIGNAL(sigAlert()), this, SLOT(slotAlert()));
 
     connect(this, SIGNAL(sigGrabNextFrame()), &camera, SLOT(slotPrepareNextFrame()), Qt::QueuedConnection);
     connect(&camera, SIGNAL(sigLog(QString,QString)), this, SLOT(slotLog(QString,QString)), Qt::QueuedConnection);
@@ -24,8 +24,13 @@ MainWindow::MainWindow(QSharedPointer<QSettings> _settings, QWidget *parent) :
     connect(ui->btnStop, SIGNAL(pressed()), &camera, SLOT(slotStop()), Qt::QueuedConnection);
     connect(ui->btnCamConf, SIGNAL(pressed()), &camera, SLOT(slotSelectCamera()), Qt::DirectConnection);
 
-    connect(&timer, SIGNAL(timeout()), this, SLOT(check()));
-    timer.setSingleShot(true);
+    connect(&receiverTimer, SIGNAL(timeout()), this, SLOT(check()));
+    receiverTimer.setSingleShot(true);
+
+    connect(&spliterDefectTimer, SIGNAL(timeout()), this, SLOT(slotSendDefectedCommandToSplitter()));
+    spliterDefectTimer.setSingleShot(true);
+    connect(&spliterPerfectTimer, SIGNAL(timeout()), this, SLOT(slotSendPerfectCommandToSplitter()));
+    spliterPerfectTimer.setSingleShot(true);
 
     startup();
 
@@ -35,6 +40,24 @@ MainWindow::~MainWindow()
 {
     closeup();
     delete ui;
+}
+
+void MainWindow::slotSendDefectedCommandToSplitter()
+{
+    if(!this->splitterPort.isOpen())
+        return;
+
+    this->splitterPort.write("0");
+    this->splitterPort.flush();
+}
+
+void MainWindow::slotSendPerfectCommandToSplitter()
+{
+    if(!this->splitterPort.isOpen())
+        return;
+
+    this->splitterPort.write("1");
+    this->splitterPort.flush();
 }
 
 void MainWindow::showImage(Mat &src, QLabel *lbl)
@@ -52,16 +75,23 @@ void MainWindow::showImage(Mat &src, QLabel *lbl)
 void MainWindow::startup()
 {
     QString cameraName = settings->value("camera/name", "DFK").toString();
-    QString portname   = settings->value("hardware/portname", "COM").toString();
-    int     baudrate   = settings->value("hardware/baudrate", 9600).toInt();
-    int     delay      = settings->value("hardware/delay", 0).toInt();
+    QString receiverPortname   = settings->value("receiverHardware/portname", "COM").toString();
+    int     receiverBaudrate   = settings->value("receiverHardware/baudrate", 9600).toInt();
+    int     receiverDelay      = settings->value("receiverHardware/delay", 0).toInt();
+    QString splitterPortname   = settings->value("splitterHardware/portname", "COM").toString();
+    int     splitterBaudrate   = settings->value("splitterHardware/baudrate", 9600).toInt();
+    int     splitterDelay      = settings->value("splitterHardware/delay", 0).toInt();
 
-    ui->txtPort->setText(portname);
-    ui->txtBaudRate->setValue(baudrate);
-    ui->txtDelay->setValue(delay);
 
+    ui->txtPort->setText(receiverPortname);
+    ui->txtBaudRate->setValue(receiverBaudrate);
+    ui->txtDelay->setValue(receiverDelay);
+    ui->txtSplitterPort->setText(splitterPortname);
+    ui->txtSplitterBaudRate->setValue(splitterBaudrate);
+    ui->txtSplitterDelay->setValue(splitterDelay);
 
-    hardware.setSerialPort(portname, baudrate);
+    this->on_btnConnect_clicked();
+    this->on_btnSplitterConnect_clicked();
     if(camera.openDevice(cameraName)) {
         slotStartCamera();
     }
@@ -70,11 +100,13 @@ void MainWindow::startup()
 
 void MainWindow::closeup()
 {
-
     settings->setValue("camera/name", camera.getDeviceName());
-    settings->setValue("hardware/portname", ui->txtPort->text());
-    settings->setValue("hardware/baudrate", ui->txtBaudRate->value());
-    settings->setValue("hardware/delay", ui->txtDelay->value());
+    settings->setValue("receiverHardware/portname", ui->txtPort->text());
+    settings->setValue("receiverHardware/baudrate", ui->txtBaudRate->value());
+    settings->setValue("receiverHardware/delay", ui->txtDelay->value());
+    settings->setValue("splitterHardware/portname", ui->txtSplitterPort->text());
+    settings->setValue("splitterHardware/baudrate", ui->txtSplitterBaudRate->value());
+    settings->setValue("splitterHardware/delay", ui->txtSplitterDelay->value());
 }
 
 void MainWindow::check()
@@ -86,17 +118,19 @@ void MainWindow::check()
 
         bool isDefected = SarShishe::isDefected(currentFrameResized, output);
 
-        showImage(output, ui->lblOutput);
-
         if(isDefected) {
             int val = ui->lcdDefect->value(); val++;
             ui->lcdDefect->display(val);
             ui->lblResult->setText("Defected");
+            spliterDefectTimer.start(this->ui->txtSplitterDelay->value());
         } else {
             int val = ui->lcdCorrect->value(); val++;
             ui->lcdCorrect->display(val);
             ui->lblResult->setText("Perfect");
+            spliterPerfectTimer.start(this->ui->txtSplitterDelay->value());
         }
+
+        showImage(output, ui->lblOutput);
     }
 }
 
@@ -138,7 +172,7 @@ void MainWindow::slotStartCamera()
 
 void MainWindow::slotAlert()
 {
-    timer.start(ui->txtDelay->value());
+    receiverTimer.start(ui->txtDelay->value());
 }
 
 
@@ -169,16 +203,36 @@ void MainWindow::on_btnCheck_clicked()
 
 void MainWindow::on_btnConnect_clicked()
 {
-    hardware.setSerialPort(ui->txtPort->text(), ui->txtBaudRate->value());
+    receiverHardware.setSerialPort(ui->txtPort->text(), ui->txtBaudRate->value());
 }
 
 void MainWindow::on_btnDisconnect_clicked()
 {
-    hardware.slotDisconnect();
+    receiverHardware.slotDisconnect();
 }
 
 void MainWindow::on_btnResetCounter_clicked()
 {
     ui->lcdCorrect->display(0);
     ui->lcdDefect->display(0);
+}
+
+void MainWindow::on_btnSplitterConnect_clicked()
+{
+    if(this->splitterPort.isOpen()) {
+        this->splitterPort.close();
+    }
+
+    this->splitterPort.setPortName(this->ui->txtSplitterPort->text());
+
+    if(this->splitterPort.open(QIODevice::WriteOnly)) {
+        this->splitterPort.setParity(QSerialPort::NoParity);
+        this->splitterPort.setBaudRate(this->ui->txtSplitterBaudRate->value());
+        this->splitterPort.setStopBits(QSerialPort::OneStop);
+        this->splitterPort.setDataBits(QSerialPort::Data8);
+
+        this->slotLog("Splitter hardware", "Successfully connected to the splitter port");
+    } else {
+        this->slotLog("Splitter hardware", this->splitterPort.errorString());
+    }
 }

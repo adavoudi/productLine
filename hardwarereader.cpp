@@ -38,12 +38,12 @@ bool hardwareReader::setSerialPort(QString _port, int _baudrate)
         connect(m_serialPort.data(), static_cast<void (QSerialPort::*)(QSerialPort::SerialPortError)>(&QSerialPort::error),
                 this, &hardwareReader::slotHandleError);
 
-        emit sigLog("Hardware", "Successfully connected");
+        emit sigLog("Receiver hardware", "Successfully connected");
 
         return true;
     } else {
 
-        emit sigLog("Hardware", "Could not connect to the specified port");
+        emit sigLog("Receiver hardware", "Could not connect to the specified port");
         return false;
     }
 
@@ -64,11 +64,11 @@ bool hardwareReader::setSerialPort(QSharedPointer<QSerialPort> _serialPort)
         connect(m_serialPort.data(), static_cast<void (QSerialPort::*)(QSerialPort::SerialPortError)>(&QSerialPort::error),
                 this, &hardwareReader::slotHandleError);
 
-        emit sigLog("hardware", "Successfully connected");
+        emit sigLog("Receiver hardware", "Successfully connected");
 
         return true;
     } else {
-        emit sigLog("hardware", "Not active");
+        emit sigLog("Receiver hardware", "Not active");
         return false;
     }
 }
@@ -97,7 +97,7 @@ void hardwareReader::slotHandleError(QSerialPort::SerialPortError _error)
         QString err = QObject::tr("An I/O error occurred while reading the data from port %1, error: %2").
                 arg(m_serialPort->portName()).arg(m_serialPort->errorString());
 
-        emit sigLog("hardware", err);
+        emit sigLog("Receiver hardware", err);
     }
 }
 
@@ -110,9 +110,9 @@ void hardwareReader::slotDisconnect()
 
         this->m_serialPort->close();
 
-        emit sigLog("hardware", "Successfully disconnected");
+        emit sigLog("Receiver hardware", "Successfully disconnected");
     } else {
-        emit sigLog("hardware", "No connection to close");
+        emit sigLog("Receiver hardware", "No connection to close");
 
     }
 }

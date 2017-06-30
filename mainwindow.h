@@ -23,12 +23,15 @@ public:
     explicit MainWindow(QSharedPointer<QSettings> _settings, QWidget *parent = 0);
     ~MainWindow();
 
+
 private slots:
     void slotFrameReady(const cv::Mat _frame);
     void slotLog(QString _title, QString _desc);
     void slotStartCamera();
     void slotAlert();
     void check();
+    void slotSendDefectedCommandToSplitter();
+    void slotSendPerfectCommandToSplitter();
 
 
 signals:
@@ -40,8 +43,8 @@ private slots:
     void on_btnCheck_clicked();
     void on_btnConnect_clicked();
     void on_btnDisconnect_clicked();
-
     void on_btnResetCounter_clicked();
+    void on_btnSplitterConnect_clicked();
 
 private:
     void showImage(Mat &src, QLabel *lbl);
@@ -55,8 +58,11 @@ private:
     Camera                  camera;
     cv::Mat                 output;
 
-    hardwareReader          hardware;
-    QTimer                  timer;
+    hardwareReader          receiverHardware;
+    QTimer                  receiverTimer;
+
+    QSerialPort             splitterPort;
+    QTimer                  spliterPerfectTimer, spliterDefectTimer;
 
 
     QSharedPointer<QSettings>   settings;
